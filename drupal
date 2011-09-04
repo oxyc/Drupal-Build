@@ -1,0 +1,229 @@
+#!/bin/bash
+
+PROGNAME=${0##*/} 
+PROGVERSION=0.1
+
+# Configurations
+DRUSH_ALIAS_DIR="$HOME/.drush/aliases"
+DRUSH_MAKE_FILE="$HOME/.drush/drush_make/base.make"
+DRUSH_MAKE_FLAGS= #"--contrib-destination=sites/all/contrib"
+
+USER="admin"
+PASS="admin"
+MAIL="public@oxy.fi"
+INSTALL_ROOT="`pwd`"
+
+SITE_ID=                            # unique identifier used for the domain
+SITE_PATH=
+SITE_TITLE=
+SITE_LANG=
+SITE_PROFILE=
+
+# Development station
+DEV_ROOT="$HOME/Projects/Drupal"      # root directory where drupal projects are stored
+DEV_DB_URL="mysql://root@localhost/"  # used to create the database and grant privileges
+DEV_DB_USER="oxy"                     # user account drupal will use to connect to db
+DEV_HOST="http://localhost/Drupal"    # URL to the local host root, domain will be a subdir
+
+# Live station
+LIVE_ROOT="public_html"               # root directory
+LIVE_DB_PROTOCOL="mysql://"           # database protocol
+LIVE_DB_USER=
+LIVE_DB_PASSWORD=
+LIVE_DB=
+LIVE_USER=
+LIVE_PASSWORD=
+LIVE_HOST=
+
+MODULES_CORE=( 
+  libraries
+  variable variable_admin variable_realm variable_store 
+  entity token entity_token 
+  ctools views views_ui 
+  pathauto page_title
+  date date_api date_popup date_popup_authored date_views
+  media media_browser_plus smartcrop colorbox
+  devel admin_menu admin_menu_toolbar devel_generate admin_devel
+  elements html5_tools blocktheme semanticviews
+  wysiwyg ie6nomore invisimail menu_block transliteration
+  features
+  googleanalytics
+  base misc_hooks
+)
+
+MODULE_I18N=(
+  translation translation_helpers
+  i18n i18n_block i18n_field i18n_node i18n_menu i18n_pathi18n_redirect 
+  i18n_select i18n_string i18n_sync i18n_translation i18n_variable l10n_update
+)
+
+# Help info
+usage() { 
+  cat << EOF
+  Usage: $PROGNAME [options]
+         $PROGNAME -o <version> -c
+
+  Drupal make script. Creates a new directory with the domain name within the
+  specified path.
+
+  Options:
+EOF
+  cat << EOF | column -s\& -t
+
+    -h | help & show this output
+    -v | version & show version information
+    -d | deploy
+    -s | sync with remote host
+    -m | make the drupal project
+
+EOF
+}
+
+doing() {
+  echo -e "\n$1"
+}
+
+setup() {
+
+  doing "Setting up the install at ${SITE_PATH}"
+  if [ [ $SITE_LANG != "en" ] || [ $SITE_LANG ] ]; then
+    drush make $DRUSH_MAKE_FLAGS --translations=$SITE_LANG $DRUSH_MAKE_FILE $SITE_PATH
+  else
+    drush make $MAKE_FLAGS $DRUSH_MAKE_FILE $SITE_PATH
+  fi
+
+  cd $SITE_PATH
+
+  doing "Installing Drupal…"
+  local DB="--db-url=${DEV_DB_URL}${SITE_ID}"
+  drush -y site-install $SITE_PROFILE $DB --locale=$SITE_LANG --site-name=$SITE_ID --account-name=$USER --account-pass=$PASS --account-mail=$MAIL
+
+  doing "Granting privileges to database user"
+  mysql -uroot -e "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, INDEX, ALTER ON $SITE_ID.* TO '$DEV_DB_USER'@'localhost';"
+  mysql -uroot -e "FLUSH PRIVILEGES;"
+
+  # Enable desired modules
+  enableModules
+
+  doing "Allow write access to files folder"
+  chmod -R a+w ./sites/default/files
+
+  doing "Finished the installation!"
+  google-chrome `drush --uri=${DEV_HOST}/${SITE_ID} user-login`
+}
+
+enableModules() {
+  for module in "${MODULES_CORE[@]}"; do
+    drush -y pm-enable $module  
+  done
+}
+
+### User Input
+
+make() {
+  doing "Making Drupal site"
+
+  echo -n "Enter the domain identifier: "
+  read SITE_ID
+
+  echo -n "Enter the title of the website: "
+  read SITE_TITLE
+
+  echo -n "Enter the language(s) to be included in the install separated by a comma: "
+  read SITE_LANG
+
+  SITE_PATH=${INSTALL_ROOT}/${SITE_ID}
+
+  # Check to see if the install directory already exists
+  if [ -d $SITE_PATH ]; then
+    echo -e "$SITE_PATH already exists."
+    exit 1
+  fi
+
+  setup
+
+}
+
+sync() {
+  doing "Pushing site live"
+}
+
+deploy() {
+  doing "Deploy website to remote host"
+
+  echo -n "Enter the domain identifier: "
+  read DOMAIN_ID
+
+  echo -n "Enter the remote host address: "
+  read LIVE_HOST
+
+  echo -n "Enter the remote user: "
+  read LIVE_USER
+
+  echo -n "Enter the remote user password: "
+  read LIVE_PASSWORD
+
+  echo -n "Enter the remote DB user: "
+  read LIVE_DB_USER
+
+  echo -n "Enter the remote DB password: "
+  read LIVE_DB_PASSWORD
+
+  echo -n "Enter the remote DB name: "
+  read LIVE_DB
+
+  createAliases
+  sync
+}
+
+createAliases() {
+    cat > ${DRUSH_ALIAS_DIR}/${DOMAIN_ID}.aliases.drushrc.php << EOF
+    \$aliases['dev'] = array(
+      'root' => '${DEV_ROOT}/${DIR}',
+      'uri' => '${DEV_HOST}/${DIR}
+    );
+    \$aliases['live'] = array(
+      'root' => '${LIVE_ROOT}',
+      'uri' => '${LIVE_HOST}'
+      'db-url' => '${LIVE_DB_PROTOCOL}${LIVE_DB_USER}:${LIVE_DB_PASSWORD}@localhost/${LIVE_DB}
+      'remote-host' => '${LIVE_HOST}',
+      'remote-user' => '${LIVE_USER}',
+      )
+    );
+EOF
+}
+
+# store values from arguments passed in through CI
+while getopts ":dmshv" opt; do
+  case $opt in
+    d) #deploy
+      deploy
+      exit 0
+      ;;
+    m) #make
+      make
+      exit 0
+      ;;
+    s) #sync
+      sync
+      exit 0
+      ;;
+    # base flags
+    h)
+      usage
+      exit 0
+      ;;
+    v)
+      echo "$PROGVERSION"
+      exit 0
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      exit 1
+      ;;
+    :)
+      echo "Option -$OPTARG requires an argument." >&2
+      exit 1
+      ;;
+  esac
+done
