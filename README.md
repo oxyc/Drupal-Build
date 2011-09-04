@@ -14,10 +14,13 @@ Site deployment, public key transfer etc. is planned for later.
 
 ### -d | deploy
 1.  Creates a drush alias file for dev and live servers
-2.  ... more to come
+2.  Sends your public key over ssh to the remote host
+3.  <del>Install drush on remote host</del>
+4.  <del>Create a database and a user on remote host</del>
+5.  <del>Transfer the Drupal directory as well as the database</del>
 
 ### -s | sync
-1.  ...
+1.  <del>Use drush rsync functionality to sync directories and database</del>
 
 
 ## Setup

@@ -17,7 +17,11 @@ DEV_HOST="http://localhost/Drupal"    # URL to the local host root, domain will 
 # User ID 1 Configuration
 USER="admin"
 PASS="adminl"
-MAIL="public@oxy.fi"
+MAIL="admin@example.com"
+
+# Extra
+PUBLIC_KEY="$HOME/.ssh/id_rsa.pub"
+SENDKEY=                              # transfer your public key during deployment
 INSTALL_ROOT="`pwd`"                  # setup drupal in current working dir
 
 # Variables set through user input
@@ -132,6 +136,11 @@ deploy() {
   read LIVE_DB
 
   createAlias
+
+  if [ $SENDKEY ]; then
+    sendKey
+  fi
+
   sync
 }
 
@@ -195,17 +204,24 @@ createAlias() {
 EOF
 }
 
+sendKey() {
+  local DOMAIN=$LIVE_HOST | awk '{gsub("http://|www.|/.*","")}1')}
+  ssh -q -t -l ${LIVE_USER} ${DOMAIN} "umask 077; mkdir -p .ssh && cat >> .ssh/authorized_keys" < ${PUBLIC_KEY}
+}
+
 # Streamline echoing status
 doing() {
   echo -e "\n$1"
 }
 
 # Check command flags invoked and store possible argumets
-while getopts ":dmshv" opt; do
+while getopts ":dpmshv" opt; do
   case $opt in
     d) #deploy
       deploy
-      exit 0
+      ;;
+    p) #publickey
+      SENDKEY=1
       ;;
     m) #make
       make
