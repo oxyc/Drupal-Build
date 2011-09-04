@@ -3,21 +3,10 @@
 PROGNAME=${0##*/} 
 PROGVERSION=0.1
 
-# Configurations
-DRUSH_ALIAS_DIR="$HOME/.drush/aliases"
+# Drush Configuration
+DRUSH_ALIAS_DIR="$HOME/.drush/aliases"    # remember to add the dir in your drushrc.php
 DRUSH_MAKE_FILE="$HOME/.drush/drush_make/base.make"
-DRUSH_MAKE_FLAGS= #"--contrib-destination=sites/all/contrib"
-
-USER="admin"
-PASS="admin"
-MAIL="public@oxy.fi"
-INSTALL_ROOT="`pwd`"
-
-SITE_ID=                            # unique identifier used for the domain
-SITE_PATH=
-SITE_TITLE=
-SITE_LANG=
-SITE_PROFILE=
+DRUSH_MAKE_FLAGS=
 
 # Development station
 DEV_ROOT="$HOME/Projects/Drupal"      # root directory where drupal projects are stored
@@ -25,9 +14,22 @@ DEV_DB_URL="mysql://root@localhost/"  # used to create the database and grant pr
 DEV_DB_USER="oxy"                     # user account drupal will use to connect to db
 DEV_HOST="http://localhost/Drupal"    # URL to the local host root, domain will be a subdir
 
-# Live station
+# User ID 1 Configuration
+USER="admin"
+PASS="adminl"
+MAIL="public@oxy.fi"
+INSTALL_ROOT="`pwd`"                  # setup drupal in current working dir
+
+# Variables set through user input
+SITE_ID=                              # unique identifier used for the domain
+SITE_PATH=
+SITE_TITLE=
+SITE_LANG=
+SITE_PROFILE=
+
+# Live station, variables set through user input
 LIVE_ROOT="public_html"               # root directory
-LIVE_DB_PROTOCOL="mysql://"           # database protocol
+LIVE_DB_PROTOCOL="mysql://"
 LIVE_DB_USER=
 LIVE_DB_PASSWORD=
 LIVE_DB=
@@ -53,7 +55,7 @@ MODULES_CORE=(
 
 MODULE_I18N=(
   translation translation_helpers
-  i18n i18n_block i18n_field i18n_node i18n_menu i18n_pathi18n_redirect 
+  i18n i18n_block i18n_field i18n_node i18n_menu i18n_path i18n_redirect 
   i18n_select i18n_string i18n_sync i18n_translation i18n_variable l10n_update
 )
 
@@ -79,47 +81,7 @@ EOF
 EOF
 }
 
-doing() {
-  echo -e "\n$1"
-}
-
-setup() {
-
-  doing "Setting up the install at ${SITE_PATH}"
-  if [ [ $SITE_LANG != "en" ] || [ $SITE_LANG ] ]; then
-    drush make $DRUSH_MAKE_FLAGS --translations=$SITE_LANG $DRUSH_MAKE_FILE $SITE_PATH
-  else
-    drush make $MAKE_FLAGS $DRUSH_MAKE_FILE $SITE_PATH
-  fi
-
-  cd $SITE_PATH
-
-  doing "Installing Drupal…"
-  local DB="--db-url=${DEV_DB_URL}${SITE_ID}"
-  drush -y site-install $SITE_PROFILE $DB --locale=$SITE_LANG --site-name=$SITE_ID --account-name=$USER --account-pass=$PASS --account-mail=$MAIL
-
-  doing "Granting privileges to database user"
-  mysql -uroot -e "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, INDEX, ALTER ON $SITE_ID.* TO '$DEV_DB_USER'@'localhost';"
-  mysql -uroot -e "FLUSH PRIVILEGES;"
-
-  # Enable desired modules
-  enableModules
-
-  doing "Allow write access to files folder"
-  chmod -R a+w ./sites/default/files
-
-  doing "Finished the installation!"
-  google-chrome `drush --uri=${DEV_HOST}/${SITE_ID} user-login`
-}
-
-enableModules() {
-  for module in "${MODULES_CORE[@]}"; do
-    drush -y pm-enable $module  
-  done
-}
-
-### User Input
-
+# Drupal make, gathers user input and invokes drush make
 make() {
   doing "Making Drupal site"
 
@@ -144,10 +106,7 @@ make() {
 
 }
 
-sync() {
-  doing "Pushing site live"
-}
-
+# Deploy the site to remote host
 deploy() {
   doing "Deploy website to remote host"
 
@@ -172,11 +131,54 @@ deploy() {
   echo -n "Enter the remote DB name: "
   read LIVE_DB
 
-  createAliases
+  createAlias
   sync
 }
 
-createAliases() {
+# Sync local and remote host
+sync() {
+  doing "Pushing site live"
+}
+
+# Create the Drupal site with info supplied from the make function
+setup() {
+
+  doing "Setting up the install at ${SITE_PATH}"
+  if [ [ $SITE_LANG != "en" ] || [ $SITE_LANG ] ]; then
+    drush make ${DRUSH_MAKE_FLAGS} --translations=${SITE_LANG} ${DRUSH_MAKE_FILE} ${SITE_PATH}
+  else
+    drush make ${MAKE_FLAGS} ${DRUSH_MAKE_FILE} ${SITE_PATH}
+  fi
+
+  cd $SITE_PATH
+
+  doing "Installing Drupal…"
+  local DB="--db-url=${DEV_DB_URL}${SITE_ID}"
+  drush -y site-install ${SITE_PROFILE} ${DB} --locale=${SITE_LANG} --site-name=${SITE_TITLE} --account-name=${USER} --account-pass=${PASS} --account-mail=${MAIL}
+
+  doing "Granting privileges to database user"
+  mysql -uroot -e "GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, DROP, INDEX, ALTER ON ${SITE_ID}.* TO '${DEV_DB_USER}'@'localhost';"
+  mysql -uroot -e "FLUSH PRIVILEGES;"
+
+  # Enable desired modules
+  enableModules
+
+  doing "Allow write access to files folder"
+  chmod -R a+w ./sites/default/files
+
+  doing "Finished the installation!"
+  google-chrome `drush --uri=${DEV_HOST}/${SITE_ID} user-login`
+}
+
+# Enable all modules
+enableModules() {
+  for module in "${MODULES_CORE[@]}"; do
+    drush -y pm-enable $module  
+  done
+}
+
+# Create an alias file for the current drupal build
+createAlias() {
     cat > ${DRUSH_ALIAS_DIR}/${DOMAIN_ID}.aliases.drushrc.php << EOF
     \$aliases['dev'] = array(
       'root' => '${DEV_ROOT}/${DIR}',
@@ -193,7 +195,12 @@ createAliases() {
 EOF
 }
 
-# store values from arguments passed in through CI
+# Streamline echoing status
+doing() {
+  echo -e "\n$1"
+}
+
+# Check command flags invoked and store possible argumets
 while getopts ":dmshv" opt; do
   case $opt in
     d) #deploy
@@ -208,6 +215,7 @@ while getopts ":dmshv" opt; do
       sync
       exit 0
       ;;
+
     # base flags
     h)
       usage
