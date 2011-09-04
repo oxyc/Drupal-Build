@@ -21,7 +21,7 @@ Site deployment, public key transfer etc. is planned for later.
 
 
 ## Setup
-1.  Install [Drush][] and Drush Make
+1.  Install [Drush][] and [Drush Make]
 2.  Setup Drush Make to your liking
 2.  Create a drushrc.php file with an alias location variable
 3.  Configure the bash script to your liking, if you want your downloaded modules
@@ -29,3 +29,7 @@ Site deployment, public key transfer etc. is planned for later.
     dev box is required.
 4.  Add this folder to your $PATH variable
 5.  drupal -m
+
+[Drush]: http://www.drush.ws
+[Drush Make]: http://drupal.org/project/drush_make
+
