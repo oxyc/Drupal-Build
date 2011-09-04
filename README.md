@@ -5,19 +5,19 @@ Site deployment, public key transfer etc. is planned for later.
 
 
 ## What it actually does
--   ### -m | make
-    1.  Uses Drush Make to download all desired modules and translations
-    2.  Uses Drush to install Drupal with your uid1 of choice
-    3.  Creates a database on localhost (As this is localhost root is passwordless, 
-        change if necessary).
-    4.  Opens the browser with a one-time change password link to your local site.
+### -m | make
+1.  Uses Drush Make to download all desired modules and translations
+2.  Uses Drush to install Drupal with your uid1 of choice
+3.  Creates a database on localhost (As this is localhost root is passwordless, 
+    change if necessary).
+4.  Opens the browser with a one-time change password link to your local site.
 
--   ### -d | deploy
-    1.  Creates a drush alias file for dev and live servers
-    2.  ... more to come
+### -d | deploy
+1.  Creates a drush alias file for dev and live servers
+2.  ... more to come
 
--   ### -s | sync
-    1.  ...
+### -s | sync
+1.  ...
 
 
 ## Setup
