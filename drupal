@@ -74,15 +74,15 @@ MODULES_CONTRIB=(
   base misc_hooks
 )
 
-MODULE_FEATURES=(
+MODULES_FEATURES=(
   feature_base
 )
 
-MODULE_THEME=(
+MODULES_THEME=(
   base_theme
 )
 
-MODULE_I18N=(
+MODULES_I18N=(
   translation translation_helpers
   i18n i18n_block i18n_field i18n_node i18n_menu i18n_path i18n_redirect 
   i18n_select i18n_string i18n_sync i18n_translation i18n_variable l10n_update
@@ -91,6 +91,7 @@ MODULE_I18N=(
 MODULES_DISABLE=(
 )
 
+# Use `drush vget` and look through for what you find interesting
 declare -A VARIABLES=(
   ["blocktheme_show_custom_block_theme"]=1
   ["blocktheme_themes"]="min|Minimalism"
@@ -239,16 +240,24 @@ setup() {
   google-chrome `drush --uri=${DEV_HOST}/${SITE_ID} user-login`
 }
 
-# Enable all modules
+# Enable modules
 enableModules() {
-  for module in "${@}"; do
-    drush -y pm-enable $module  
+  for arg in $*; do
+    for module in "${arg[@]}"; do
+        drush -y pm-enable $module  
+    done
   done
 }
 
+# Set variables.
+# Pass the array name as a string
+# TODO: Looking for a non-evil solution with an actual array reference
+# http://stackoverflow.com/questions/4069188/how-to-pass-an-associative-array-as-argument-to-a-function-in-bash
 setVariables() {
-  for var in $(eval echo \${!${1}[@]}); do
-    drush vset --always-set ${var} $(eval echo \${${1}["$var"]})
+  for arg in $*; do
+    for var in $(eval echo \${!${arg}[@]}); do
+        drush vset --always-set ${var} $(eval echo \${${arg}["$var"]})
+    done
   done
 }
 
@@ -270,6 +279,7 @@ createAlias() {
 EOF
 }
 
+# Send Public key over ssh to remote host
 sendKey() {
   local DOMAIN=$LIVE_HOST | awk '{gsub("http://|www.|/.*","")}1'
   ssh -q -t -l ${LIVE_USER} ${DOMAIN} "umask 077; mkdir -p .ssh && cat >> .ssh/authorized_keys" < ${PUBLIC_KEY}
@@ -298,8 +308,7 @@ while getopts ":depmshvV" opt; do
       exit 0
       ;;
     e) #enable modules
-      enableModules ${MODULES_CORE[@]}
-      enableModules ${MODULES_CONTRIB[@]}
+      enableModules ${MODULES_CORE[@]} ${MODULES_CONTRIB[@]} ${MODULES_FEATURES[@]} ${MODULES_THEME[@]}
       ;;
     V) #set variables
       setVariables VARIABLES 
