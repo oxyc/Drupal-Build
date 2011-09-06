@@ -1,5 +1,23 @@
 #!/bin/bash
 
+# TODO
+# enable seven
+# The Date API requires that you set up the site timezone and first day of week settings and the date format settings to function correctly.
+# administrator role
+# Full HTML text filter
+# CKEditor Full HTML
+# Colorbox <- fixit
+# Media Image Caption field
+#
+# ERROR
+# Warning: Division by zero in theme_image_style_preview() (line 786 of /home/oxy/Projects/Drupal/dev/modules/image/image.admin.inc).
+# Warning: array_intersect_key(): Argument #1 is not an array in theme_image_style_preview() (line 788 of /home/oxy/Projects/Drupal/dev/modules/image/image.admin.inc).)))))
+# Notice: Undefined index: fields in field_info_fields() (line 592 of /home/oxy/Projects/Drupal/dev/modules/field/field.info.inc).
+# Warning: Invalid argument supplied for foreach() in field_info_fields() (line 592 of /home/oxy/Projects/Drupal/dev/modules/field/field.info.inc).
+# Notice: Undefined index: fields in field_info_fields() (line 592 of /home/oxy/Projects/Drupal/dev/modules/field/field.info.inc).
+# Warning: Invalid argument supplied for foreach() in field_info_fields() (line 592 of /home/oxy/Projects/Drupal/dev/modules/field/field.info.inc).
+# One or more problems were detected with your Drupal installation. Check the status report for more information.)))))))))) 
+
 PROGNAME=${0##*/} 
 PROGVERSION=0.1
 
@@ -29,7 +47,7 @@ SITE_ID=                              # unique identifier used for the domain
 SITE_PATH=
 SITE_TITLE=
 SITE_LANG=
-SITE_PROFILE=
+SITE_PROFILE="minimal"
 
 # Live station, variables set through user input
 LIVE_ROOT="public_html"               # root directory
@@ -41,14 +59,20 @@ LIVE_USER=
 LIVE_PASSWORD=
 LIVE_HOST=
 
-MODULES_CORE=( 
+MODULES_CORE=(
+  menu field_ui
+  contextual dashboard help overlay path
+  file image list number 
+)
+
+MODULES_CONTRIB=( 
   libraries
   variable variable_admin variable_realm variable_store 
   entity token entity_token 
   ctools views views_ui 
   pathauto page_title
   date date_api date_popup date_popup_authored date_views
-  media media_browser_plus smartcrop colorbox
+  media smartcrop colorbox
   devel admin_menu admin_menu_toolbar devel_generate admin_devel
   elements html5_tools blocktheme semanticviews
   wysiwyg ie6nomore invisimail menu_block transliteration
@@ -57,10 +81,46 @@ MODULES_CORE=(
   base misc_hooks
 )
 
+MODULE_FEATURES=(
+  feature_base
+)
+
+MODULE_THEME=(
+  base_theme
+)
+
 MODULE_I18N=(
   translation translation_helpers
   i18n i18n_block i18n_field i18n_node i18n_menu i18n_path i18n_redirect 
   i18n_select i18n_string i18n_sync i18n_translation i18n_variable l10n_update
+)
+
+MODULES_DISABLE=(
+)
+
+declare -A VARIABLES=(
+  ["blocktheme_show_custom_block_theme"]=1
+  ["blocktheme_themes"]="min|Minimalism"
+  ["admin_menu_tweak_tabs"]=1
+  ["configurable_timezones"]=0
+  ["date_default_timezone"]="Europe/Helsinki"
+  ["date_first_day"]="1"
+  ["date_format_html5_tools_iso8601"]="c"
+  ["date_format_ymd"]="Y-m-d"
+  ["html5_tools_override_views_field_rewrite_elements"]=1
+  ["ie6nomore_ie"]="lt IE 7"
+  ["image_jpeg_quality"]="100"
+  ["menu_block_suppress_core"]=1
+  ["pathauto_node_pattern"]="[node:title]"
+  ["pathauto_reduce_ascii"]=1
+  ["pathauto_transliterate"]=1
+  ["pathauto_update_action"]="2"
+  ["site_default_country"]="FI"
+  ["user_admin_role"]="3"
+  ["user_cancel_method"]="user_cancel_block"
+  ["user_default_timezone"]="0"
+  ["user_email_verification"]=0
+  ["user_register"]="0"
 )
 
 # Help info
@@ -170,7 +230,12 @@ setup() {
   mysql -uroot -e "FLUSH PRIVILEGES;"
 
   # Enable desired modules
-  enableModules
+  enableModules ${MODULES_CORE[@]}
+  enableModules ${MODULES_CONTRIB[@]}
+  enableModules ${MODULES_THEME[@]}
+  enableModules ${MODULES_FEATURES[@]}
+
+  setVariables VARIABLES
 
   doing "Allow write access to files folder"
   chmod -R a+w ./sites/default/files
@@ -181,8 +246,14 @@ setup() {
 
 # Enable all modules
 enableModules() {
-  for module in "${MODULES_CORE[@]}"; do
+  for module in "${@}"; do
     drush -y pm-enable $module  
+  done
+}
+
+setVariables() {
+  for var in $(eval echo \${!${1}[@]}); do
+    drush vset --always-set ${var} $(eval echo \${${1}["$var"]})
   done
 }
 
@@ -205,7 +276,7 @@ EOF
 }
 
 sendKey() {
-  local DOMAIN=$LIVE_HOST | awk '{gsub("http://|www.|/.*","")}1')}
+  local DOMAIN=$LIVE_HOST | awk '{gsub("http://|www.|/.*","")}1'
   ssh -q -t -l ${LIVE_USER} ${DOMAIN} "umask 077; mkdir -p .ssh && cat >> .ssh/authorized_keys" < ${PUBLIC_KEY}
 }
 
@@ -215,7 +286,7 @@ doing() {
 }
 
 # Check command flags invoked and store possible argumets
-while getopts ":dpmshv" opt; do
+while getopts ":depmshvV" opt; do
   case $opt in
     d) #deploy
       deploy
@@ -230,6 +301,13 @@ while getopts ":dpmshv" opt; do
     s) #sync
       sync
       exit 0
+      ;;
+    e) #enable modules
+      enableModules ${MODULES_CORE[@]}
+      enableModules ${MODULES_CONTRIB[@]}
+      ;;
+    V) #set variables
+      setVariables VARIABLES 
       ;;
 
     # base flags
