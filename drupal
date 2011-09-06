@@ -1,22 +1,15 @@
 #!/bin/bash
 
 # TODO
-# enable seven
-# The Date API requires that you set up the site timezone and first day of week settings and the date format settings to function correctly.
-# administrator role
-# Full HTML text filter
-# CKEditor Full HTML
-# Colorbox <- fixit
-# Media Image Caption field
+# Figure out how to import WYSIWYG settings
 #
-# ERROR
+# ERROR (Check modules)
 # Warning: Division by zero in theme_image_style_preview() (line 786 of /home/oxy/Projects/Drupal/dev/modules/image/image.admin.inc).
 # Warning: array_intersect_key(): Argument #1 is not an array in theme_image_style_preview() (line 788 of /home/oxy/Projects/Drupal/dev/modules/image/image.admin.inc).)))))
 # Notice: Undefined index: fields in field_info_fields() (line 592 of /home/oxy/Projects/Drupal/dev/modules/field/field.info.inc).
 # Warning: Invalid argument supplied for foreach() in field_info_fields() (line 592 of /home/oxy/Projects/Drupal/dev/modules/field/field.info.inc).
 # Notice: Undefined index: fields in field_info_fields() (line 592 of /home/oxy/Projects/Drupal/dev/modules/field/field.info.inc).
 # Warning: Invalid argument supplied for foreach() in field_info_fields() (line 592 of /home/oxy/Projects/Drupal/dev/modules/field/field.info.inc).
-# One or more problems were detected with your Drupal installation. Check the status report for more information.)))))))))) 
 
 PROGNAME=${0##*/} 
 PROGVERSION=0.1
@@ -121,6 +114,8 @@ declare -A VARIABLES=(
   ["user_default_timezone"]="0"
   ["user_email_verification"]=0
   ["user_register"]="0"
+  ["admin_theme"]="seven"
+  ["node_admin_theme"]=1
 )
 
 # Help info
