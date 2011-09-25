@@ -20,14 +20,14 @@ DRUSH_MAKE_FILE="$HOME/.drush/drush_make/base.make"
 DRUSH_MAKE_FLAGS=
 
 # Development station
-DEV_ROOT="$HOME/Projects/Drupal"      # root directory where drupal projects are stored
-DEV_DB_URL="mysql://root@localhost/"  # used to create the database and grant privileges
-DEV_DB_USER="oxy"                     # user account drupal will use to connect to db
-DEV_HOST="http://localhost/Drupal"    # URL to the local host root, domain will be a subdir
+DEV_ROOT="$HOME/Projects/Drupal"        # root directory where drupal projects are stored
+DEV_DB_URL="mysql://root@localhost/"    # used to create the database and grant privileges
+DEV_DB_USER="oxy"                       # user account drupal will use to connect to db
+DEV_HOST="http://oxy.zapto.org/Drupal"  # URL to the local host root, domain will be a subdir
 
 # User ID 1 Configuration
 USER="admin"
-PASS="adminl"
+PASS="admin"
 MAIL="admin@example.com"
 
 # Extra
@@ -52,9 +52,19 @@ LIVE_USER=
 LIVE_PASSWORD=
 LIVE_HOST=
 
+STYLUS_DIR="sites/all/themes/base/stylus"
+CSS_DIR="sites/all/themes/base/css"
+
+# Enabled by default
+# block field field_sql_storage filter node options system text user 
+#
+# @TODO
+# Toolbar needs to be added for moderators only
+
+
 MODULES_CORE=(
-  menu field_ui
-  contextual dashboard help overlay path
+  menu field_ui taxonomy
+  contextual dashboard shortcut help overlay path
   file image list number 
 )
 
@@ -62,24 +72,26 @@ MODULES_CONTRIB=(
   libraries
   variable variable_admin variable_realm variable_store 
   entity token entity_token 
-  ctools views views_ui 
-  pathauto page_title
+  ctools views views_ui bean bean_admin_ui
+  pathauto page_title metatag metatag_ui
   date date_api date_popup date_popup_authored date_views
-  media smartcrop colorbox
-  devel admin_menu admin_menu_toolbar devel_generate admin_devel
+  media media_browser_plus smartcrop colorbox colorbox_file
+  devel admin_menu admin_menu_toolbar admin_devel
   elements html5_tools blocktheme semanticviews
-  wysiwyg ie6nomore invisimail menu_block transliteration
+  wysiwyg invisimail menu_block transliteration
   features
   googleanalytics
-  base misc_hooks
+  misc_hooks stylus
+  agrcache backports chrome_frame simplified_menu_admin styleguide addanother
+  views_slideshow views_slideshow_cycle
 )
 
 MODULES_FEATURES=(
-  feature_base
+  feature_core feature_content feature_bean feature_development
 )
 
 MODULES_THEME=(
-  base_theme
+  base
 )
 
 MODULES_I18N=(
@@ -117,6 +129,9 @@ declare -A VARIABLES=(
   ["user_register"]="0"
   ["admin_theme"]="seven"
   ["node_admin_theme"]=1
+  ["i18n_select_missing_translation"]=1
+  ["i18n_hide_translation_links"]=1
+  ["devel_rebuild_theme_registry"]=1
 )
 
 # Help info
@@ -226,12 +241,9 @@ setup() {
   mysql -uroot -e "FLUSH PRIVILEGES;"
 
   # Enable desired modules
-  enableModules ${MODULES_CORE[@]}
-  enableModules ${MODULES_CONTRIB[@]}
-  enableModules ${MODULES_THEME[@]}
-  enableModules ${MODULES_FEATURES[@]}
+  enableModules ${MODULES_CORE[@]} ${MODULES_CONTRIB[@]} ${MODULES_FEATURES[@]} ${MODULES_THEME[@]}
 
-  setVariables VARIABLES
+  #setVariables VARIABLES
 
   doing "Allow write access to files folder"
   chmod -R a+w ./sites/default/files
@@ -285,6 +297,10 @@ sendKey() {
   ssh -q -t -l ${LIVE_USER} ${DOMAIN} "umask 077; mkdir -p .ssh && cat >> .ssh/authorized_keys" < ${PUBLIC_KEY}
 }
 
+stylusWatch() {
+  stylus --watch --line-numbers ${INSTALL_ROOT}/${STYLUS_DIR} --out ${INSTALL_ROOT}/${CSS_DIR}
+}
+
 # Streamline echoing status
 doing() {
   echo -e "\n$1"
@@ -311,7 +327,7 @@ while getopts ":depmshvV" opt; do
       enableModules ${MODULES_CORE[@]} ${MODULES_CONTRIB[@]} ${MODULES_FEATURES[@]} ${MODULES_THEME[@]}
       ;;
     V) #set variables
-      setVariables VARIABLES 
+      #setVariables VARIABLES 
       ;;
 
     # base flags
